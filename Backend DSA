@@ -1,0 +1,117 @@
+const express = require("express")
+const app = express()
+const PORT = 3000
+
+app.use(express.json())
+app.use(express.static("public"))
+
+/* ================= ARRAY ================= */
+
+let capsules = []
+
+
+/* ================= STACK ================= */
+
+class Stack{
+    constructor(){
+        this.items=[]
+    }
+
+    push(data){
+        this.items.push(data)
+    }
+
+    pop(){
+        return this.items.pop()
+    }
+}
+
+const undoStack = new Stack()
+
+
+/* ================= QUEUE ================= */
+
+class Queue{
+    constructor(){
+        this.items=[]
+    }
+
+    enqueue(data){
+        this.items.push(data)
+    }
+
+    dequeue(){
+        return this.items.shift()
+    }
+}
+
+const capsuleQueue = new Queue()
+
+
+/* ================= ADD CAPSULE ================= */
+
+app.post("/addCapsule",(req,res)=>{
+
+    const capsule = req.body
+
+    capsules.push(capsule)
+
+    undoStack.push(capsule)
+
+    capsuleQueue.enqueue(capsule)
+
+    console.log("Capsule Added:", capsule)
+
+    res.json({message:"Capsule stored successfully"})
+})
+
+
+/* ================= UNDO ================= */
+
+app.delete("/undo",(req,res)=>{
+
+    const removed = undoStack.pop()
+
+    capsules = capsules.filter(c => c !== removed)
+
+    console.log("Undo capsule:", removed)
+
+    res.json({message:"Last capsule removed"})
+})
+
+
+/* ================= SEARCH ================= */
+
+app.get("/search/:date",(req,res)=>{
+
+    const date = req.params.date
+
+    const result = capsules.find(c => c.date === date)
+
+    res.json(result)
+})
+
+
+/* ================= SORT ================= */
+
+app.get("/sort",(req,res)=>{
+
+    capsules.sort((a,b)=> new Date(a.date)-new Date(b.date))
+
+    res.json(capsules)
+})
+
+
+/* ================= QUEUE ================= */
+
+app.get("/next",(req,res)=>{
+
+    const next = capsuleQueue.dequeue()
+
+    res.json(next)
+})
+
+
+app.listen(PORT,()=>{
+    console.log("Server running on http://localhost:3000")
+})
