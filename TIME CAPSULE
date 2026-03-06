@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeCapsule</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Inter',sans-serif;
+}
+
+body{
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:linear-gradient(135deg,#1e3c72,#2a5298);
+    color:#ffffff;
+}
+
+.container{
+    width:95%;
+    max-width:750px;
+    padding:40px;
+    border-radius:18px;
+    background:rgba(255,255,255,0.08);
+    backdrop-filter:blur(12px);
+    box-shadow:0 10px 30px rgba(0,0,0,0.3);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:10px;
+    font-weight:600;
+    letter-spacing:1px;
+}
+
+.subtitle{
+    text-align:center;
+    margin-bottom:25px;
+    font-size:14px;
+    opacity:0.85;
+}
+
+.clock{
+    text-align:center;
+    margin-bottom:20px;
+    font-size:14px;
+    opacity:0.8;
+}
+
+textarea, input{
+    width:100%;
+    padding:12px;
+    margin-top:12px;
+    border:none;
+    border-radius:10px;
+    outline:none;
+    font-size:14px;
+}
+
+textarea{
+    height:120px;
+    resize:none;
+}
+
+button{
+    width:100%;
+    padding:14px;
+    margin-top:20px;
+    border:none;
+    border-radius:10px;
+    background:#f4b400;
+    font-weight:600;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+button:hover{
+    background:#ffd24d;
+    transform:translateY(-2px);
+}
+
+.countdown{
+    margin-top:25px;
+    text-align:center;
+    font-size:16px;
+}
+
+.message-box{
+    margin-top:20px;
+    padding:20px;
+    border-radius:12px;
+    background:rgba(255,255,255,0.15);
+    min-height:60px;
+}
+
+.hidden{
+    display:none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>TimeCapsule</h1>
+<div class="subtitle">Preserve your thoughts for the future</div>
+
+<div class="clock" id="clock"></div>
+
+<label>Message to Future Self</label>
+<textarea id="message" placeholder="Enter your message here..."></textarea>
+
+<label>Select Unlock Date & Time</label>
+<input type="datetime-local" id="unlockDate">
+
+<button onclick="lockCapsule()">Lock Capsule</button>
+
+<div class="countdown" id="countdown"></div>
+<div class="message-box hidden" id="revealedMessage"></div>
+
+</div>
+
+<script>
+
+const clock = document.getElementById("clock");
+setInterval(()=>{
+    clock.innerHTML = "Current Date & Time: " + new Date().toLocaleString();
+},1000);
+
+let interval;
+
+function lockCapsule(){
+    const message = document.getElementById("message").value;
+    const unlockDate = new Date(document.getElementById("unlockDate").value).getTime();
+
+    if(!message || !unlockDate){
+        alert("Please complete all required fields.");
+        return;
+    }
+
+    localStorage.setItem("capsuleMessage", message);
+    localStorage.setItem("capsuleDate", unlockDate);
+
+    startCountdown();
+}
+
+function startCountdown(){
+    const unlockDate = localStorage.getItem("capsuleDate");
+    const message = localStorage.getItem("capsuleMessage");
+
+    interval = setInterval(()=>{
+        const now = new Date().getTime();
+        const distance = unlockDate - now;
+
+        if(distance <= 0){
+            clearInterval(interval);
+            document.getElementById("countdown").innerHTML = "The capsule is now unlocked.";
+            revealMessage(message);
+        }else{
+            const days = Math.floor(distance/(1000*60*60*24));
+            const hours = Math.floor((distance%(1000*60*60*24))/(1000*60*60));
+            const minutes = Math.floor((distance%(1000*60*60))/(1000*60));
+            const seconds = Math.floor((distance%(1000*60))/1000);
+
+            document.getElementById("countdown").innerHTML =
+                `Time Remaining: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+        }
+    },1000);
+}
+
+function revealMessage(text){
+    const box = document.getElementById("revealedMessage");
+    box.classList.remove("hidden");
+    box.innerHTML = "";
+    let i = 0;
+
+    const typing = setInterval(()=>{
+        if(i < text.length){
+            box.innerHTML += text.charAt(i);
+            i++;
+        } else {
+            clearInterval(typing);
+        }
+    },40);
+}
+
+window.onload = ()=>{
+    if(localStorage.getItem("capsuleDate")){
+        startCountdown();
+    }
+}
+
+</script>
+
+</body>
+</html>
