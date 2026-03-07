@@ -1,0 +1,173 @@
+/* ARRAY → storing capsules */
+
+let capsules=[];
+
+/* STACK → undo */
+
+let stack=[];
+
+/* QUEUE → opening order */
+
+let queue=[];
+
+/* request notification */
+
+if(Notification.permission!=="granted"){
+Notification.requestPermission();
+}
+
+/* create capsule */
+
+function createCapsule(){
+
+let msg=document.getElementById("message").value;
+let date=document.getElementById("date").value;
+
+if(msg=="" || date==""){
+alert("Enter message and date");
+return;
+}
+
+let capsule={
+
+id:Date.now(),
+message:msg,
+date:date,
+time:new Date(date).getTime()
+
+};
+
+capsules.push(capsule);   // ARRAY
+stack.push(capsule);      // STACK
+queue.push(capsule);      // QUEUE
+
+document.getElementById("output").innerHTML="Capsule Locked!";
+
+startTimer(capsule);
+
+}
+
+/* timer for notification */
+
+function startTimer(capsule){
+
+let interval=setInterval(()=>{
+
+let now=new Date().getTime();
+
+if(now>=capsule.time){
+
+clearInterval(interval);
+
+notifyUser(capsule);
+
+}
+
+},1000);
+
+}
+
+/* notification */
+
+function notifyUser(capsule){
+
+if(Notification.permission==="granted"){
+
+new Notification("Time Capsule Opened!",{
+
+body:capsule.message
+
+});
+
+}
+
+alert("Your Capsule Opened!\n"+capsule.message);
+
+}
+
+/* stack undo */
+
+function undoCapsule(){
+
+if(stack.length==0){
+alert("Nothing to undo");
+return;
+}
+
+let last=stack.pop();
+
+capsules=capsules.filter(c=>c.id!==last.id);
+
+document.getElementById("output").innerHTML="Last Capsule Removed";
+
+}
+
+/* display capsules */
+
+function showCapsules(){
+
+let text="";
+
+capsules.forEach(c=>{
+text+="<p>"+c.message+" | "+c.date+"</p>";
+});
+
+document.getElementById("output").innerHTML=text;
+
+}
+
+/* sorting → bubble sort */
+
+function sortCapsules(){
+
+for(let i=0;i<capsules.length;i++){
+
+for(let j=0;j<capsules.length-i-1;j++){
+
+if(new Date(capsules[j].date) > new Date(capsules[j+1].date)){
+
+let temp=capsules[j];
+capsules[j]=capsules[j+1];
+capsules[j+1]=temp;
+
+}
+
+}
+
+}
+
+showCapsules();
+
+}
+
+/* searching → linear search */
+
+function searchCapsule(){
+
+let searchDate=document.getElementById("searchDate").value;
+
+let found=null;
+
+for(let i=0;i<capsules.length;i++){
+
+if(capsules[i].date===searchDate){
+
+found=capsules[i];
+break;
+
+}
+
+}
+
+if(found){
+
+document.getElementById("output").innerHTML=
+"Found: "+found.message+" | "+found.date;
+
+}else{
+
+document.getElementById("output").innerHTML="Capsule Not Found";
+
+}
+
+}
