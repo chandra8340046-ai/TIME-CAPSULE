@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>Time Capsule</title>
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Digital Time Capsule</h1>
+
+<textarea id="message" placeholder="Write message for future"></textarea>
+
+<input type="datetime-local" id="date">
+
+<button onclick="createCapsule()">Lock Capsule</button>
+
+<button onclick="undoCapsule()">Undo Last Capsule (Stack)</button>
+
+<button onclick="showCapsules()">Show Capsules</button>
+
+<button onclick="sortCapsules()">Sort Capsules</button>
+
+<input type="datetime-local" id="searchDate">
+
+<button onclick="searchCapsule()">Search Capsule</button>
+
+<div id="output"></div>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
