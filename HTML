@@ -1,40 +1,126 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-
-<title>Time Capsule</title>
-
-<link rel="stylesheet" href="style.css">
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Time Capsule — Login</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>" />
 </head>
-
 <body>
 
-<div class="container">
+  <!-- ════════════════════════════════════
+       PAGE WRAPPER
+  ════════════════════════════════════ -->
+  <div class="page-wrapper">
 
-<h1>Digital Time Capsule</h1>
+    <!-- Glass Card -->
+    <div class="glass-card">
 
-<textarea id="message" placeholder="Write message for future"></textarea>
+      <!-- Logo -->
+      <div class="logo-area">
+        <span class="logo-icon">🌌</span>
+        <div class="logo-title">Digital Time Capsule</div>
+        <div class="logo-sub">CS Expo · DSA Project</div>
+      </div>
 
-<input type="datetime-local" id="date">
+      <!-- Alert container -->
+      <div id="alert-box"></div>
 
-<button onclick="createCapsule()">Lock Capsule</button>
+      <!-- Login Form -->
+      <div>
+        <div class="form-group">
+          <label class="form-label" for="identifier">Username or Email</label>
+          <input
+            type="text"
+            id="identifier"
+            class="form-input"
+            placeholder="Enter your username or email"
+            autocomplete="username"
+          />
+        </div>
 
-<button onclick="undoCapsule()">Undo Last Capsule (Stack)</button>
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            class="form-input"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+          />
+        </div>
 
-<button onclick="showCapsules()">Show Capsules</button>
+        <button class="btn btn-primary" id="login-btn" onclick="handleLogin()">
+          🚀 Launch Into Time
+        </button>
 
-<button onclick="sortCapsules()">Sort Capsules</button>
+        <div class="divider">or</div>
 
-<input type="datetime-local" id="searchDate">
+        <p class="auth-footer">
+          No account yet?
+          <a href="register.html">Create one &rarr;</a>
+        </p>
+      </div>
 
-<button onclick="searchCapsule()">Search Capsule</button>
+      <!-- Demo hint -->
+      <div style="margin-top:1.5rem; padding:0.75rem; background:rgba(0,212,255,0.05); border:1px dashed rgba(0,212,255,0.15); border-radius:8px;">
+        <p style="font-family:var(--font-mono); font-size:0.65rem; color:rgba(0,212,255,0.5); text-align:center; letter-spacing:0.1em;">
+          ⚡ DEMO — Register first, then login with your credentials
+        </p>
+      </div>
 
-<div id="output"></div>
+    </div><!-- /glass-card -->
 
-</div>
+    <!-- DSA Badge -->
+    <div style="margin-top:1.5rem; display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center;">
+      <span class="dsa-tag tag-array">Array</span>
+      <span class="dsa-tag tag-stack">Stack</span>
+      <span class="dsa-tag tag-queue">Queue</span>
+      <span class="dsa-tag tag-search">Linear Search</span>
+      <span class="dsa-tag tag-sort">Bubble Sort</span>
+    </div>
 
-<script src="script.js"></script>
+  </div><!-- /page-wrapper -->
+
+  <script src="auth.js"></script>
+  <script>
+    // ── Redirect if already logged in ──
+    redirectIfLoggedIn();
+
+    // ── Allow Enter key to submit ──
+    ['identifier', 'password'].forEach(id => {
+      document.getElementById(id)
+        .addEventListener('keydown', e => {
+          if (e.key === 'Enter') handleLogin();
+        });
+    });
+
+    // ── Login Handler ──
+    function handleLogin() {
+      const identifier = document.getElementById('identifier').value.trim();
+      const password   = document.getElementById('password').value;
+      const btn        = document.getElementById('login-btn');
+
+      clearAlert('alert-box');
+      setButtonLoading(btn, true);
+
+      // Simulate brief async delay for UX polish
+      setTimeout(() => {
+        const result = loginUser(identifier, password);
+
+        if (result.success) {
+          showAlert('alert-box', 'Login successful! Launching...', 'success');
+          setTimeout(() => {
+            window.location.href = 'dashboard.html';
+          }, 900);
+        } else {
+          showAlert('alert-box', result.message, 'error');
+          setButtonLoading(btn, false, '🚀 Launch Into Time');
+        }
+      }, 600);
+    }
+  </script>
 
 </body>
 </html>
