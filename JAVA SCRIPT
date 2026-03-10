@@ -1,173 +1,543 @@
-/* ARRAY → storing capsules */
+/**
+ * ═══════════════════════════════════════════════════════
+ *  CAPSULE.JS — Data Structures & Algorithms Core
+ *  Digital Time Capsule | CS Expo
+ *
+ *  DATA STRUCTURES IMPLEMENTED:
+ *    ✦ Array  → Primary capsule storage
+ *    ✦ Stack  → Undo last capsule action
+ *    ✦ Queue  → Manage capsule opening order
+ *
+ *  ALGORITHMS IMPLEMENTED:
+ *    ✦ Linear Search  → Find capsule by date/keyword
+ *    ✦ Bubble Sort    → Arrange capsules chronologically
+ * ═══════════════════════════════════════════════════════
+ */
 
-let capsules=[];
+'use strict';
 
-/* STACK → undo */
+/* ─────────────────────────────────────────────────────
+   CONSTANTS
+───────────────────────────────────────────────────── */
+const CAPSULES_KEY = 'dtc_capsules';   // localStorage key per user
 
-let stack=[];
+/* ═══════════════════════════════════════════════════
+   DATA STRUCTURE 1: ARRAY
+   Purpose: Primary storage for all capsule objects.
+   Operations: push, splice, index access, length
+   Complexity: O(1) append, O(n) search/delete
+═══════════════════════════════════════════════════ */
 
-/* QUEUE → opening order */
+/**
+ * CapsuleArray — thin wrapper around a plain JS array
+ * to make the DSA usage explicit for the expo.
+ */
+class CapsuleArray {
+  constructor() {
+    this.data = [];   // ← The underlying JavaScript Array
+  }
 
-let queue=[];
+  /** Add a capsule to the end of the array. O(1) */
+  push(capsule) {
+    this.data.push(capsule);
+  }
 
-/* request notification */
+  /** Remove a capsule at a specific index. O(n) */
+  removeAt(index) {
+    if (index < 0 || index >= this.data.length) return null;
+    return this.data.splice(index, 1)[0];
+  }
 
-if(Notification.permission!=="granted"){
-Notification.requestPermission();
+  /** Return all capsules. */
+  getAll() { return this.data; }
+
+  /** Return number of capsules. */
+  get size() { return this.data.length; }
+
+  /** Update a capsule by id. O(n) */
+  update(id, updates) {
+    for (let i = 0; i < this.data.length; i++) {
+      if (this.data[i].id === id) {
+        this.data[i] = { ...this.data[i], ...updates };
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Find a capsule by id. O(n) */
+  findById(id) {
+    for (let i = 0; i < this.data.length; i++) {
+      if (this.data[i].id === id) return this.data[i];
+    }
+    return null;
+  }
 }
 
-/* create capsule */
+/* ═══════════════════════════════════════════════════
+   DATA STRUCTURE 2: STACK
+   Purpose: Undo the last capsule creation (LIFO).
+   Operations: push, pop, peek, isEmpty
+   Complexity: O(1) push/pop
+═══════════════════════════════════════════════════ */
 
-function createCapsule(){
+class UndoStack {
+  constructor() {
+    this.items = [];   // ← Stack backed by an array (LIFO)
+  }
 
-let msg=document.getElementById("message").value;
-let date=document.getElementById("date").value;
+  /** Push a capsule id onto the undo stack. O(1) */
+  push(capsuleId) {
+    this.items.push(capsuleId);
+  }
 
-if(msg=="" || date==""){
-alert("Enter message and date");
-return;
+  /** Pop the most recently added capsule id. O(1) */
+  pop() {
+    if (this.isEmpty()) return null;
+    return this.items.pop();
+  }
+
+  /** Peek at the top of the stack without removing. O(1) */
+  peek() {
+    if (this.isEmpty()) return null;
+    return this.items[this.items.length - 1];
+  }
+
+  /** Check if stack is empty. */
+  isEmpty() { return this.items.length === 0; }
+
+  /** Return stack size. */
+  get size() { return this.items.length; }
+
+  /** Get all items (for visualization). */
+  getAll() { return [...this.items]; }
 }
 
-let capsule={
+/* ═══════════════════════════════════════════════════
+   DATA STRUCTURE 3: QUEUE
+   Purpose: Manage capsule opening order (FIFO).
+             Capsules whose unlock time arrives are
+             enqueued and processed in chronological order.
+   Operations: enqueue, dequeue, front, isEmpty
+   Complexity: O(1) enqueue, O(n) dequeue (array-based)
+═══════════════════════════════════════════════════ */
 
-id:Date.now(),
-message:msg,
-date:date,
-time:new Date(date).getTime()
+class OpeningQueue {
+  constructor() {
+    this.items = [];   // ← Queue backed by an array (FIFO)
+  }
 
-};
+  /** Add a capsule id to the back of the queue. O(1) */
+  enqueue(capsuleId) {
+    // Avoid duplicate entries
+    if (!this.items.includes(capsuleId)) {
+      this.items.push(capsuleId);
+    }
+  }
 
-capsules.push(capsule);   // ARRAY
-stack.push(capsule);      // STACK
-queue.push(capsule);      // QUEUE
+  /** Remove and return the front capsule id. O(n) */
+  dequeue() {
+    if (this.isEmpty()) return null;
+    return this.items.shift();   // ← removes from front
+  }
 
-document.getElementById("output").innerHTML="Capsule Locked!";
+  /** Peek at the front of the queue. O(1) */
+  front() {
+    if (this.isEmpty()) return null;
+    return this.items[0];
+  }
 
-startTimer(capsule);
+  /** Check if queue is empty. */
+  isEmpty() { return this.items.length === 0; }
 
+  /** Return queue size. */
+  get size() { return this.items.length; }
+
+  /** Get all queued ids (for visualization). */
+  getAll() { return [...this.items]; }
 }
 
-/* timer for notification */
+/* ═══════════════════════════════════════════════════
+   ALGORITHM 1: LINEAR SEARCH
+   Purpose: Find capsules matching a keyword or date.
+   Complexity: O(n) — checks every element until found
+═══════════════════════════════════════════════════ */
 
-function startTimer(capsule){
+/**
+ * Linear Search — scan array from index 0 to n-1
+ * Returns all capsules whose title or message contains
+ * the query string (case-insensitive).
+ *
+ * @param {Array}  capsules  — the capsule array to search
+ * @param {string} query     — search term
+ * @returns {Array}          — matching capsules
+ */
+function linearSearch(capsules, query) {
+  if (!query || !query.trim()) return capsules;  // empty query → return all
 
-let interval=setInterval(()=>{
+  const q = query.toLowerCase().trim();
+  const results = [];
 
-let now=new Date().getTime();
+  // ── LINEAR SEARCH: iterate every element ──
+  for (let i = 0; i < capsules.length; i++) {  // O(n) — one pass
+    const cap = capsules[i];
+    const inTitle   = cap.title.toLowerCase().includes(q);
+    const inMessage = cap.message.toLowerCase().includes(q);
+    const inDate    = cap.unlockDate.includes(q);
 
-if(now>=capsule.time){
+    if (inTitle || inMessage || inDate) {
+      results.push(cap);   // match found — collect it
+    }
+    // Unlike Binary Search, we never skip any element
+  }
 
-clearInterval(interval);
-
-notifyUser(capsule);
-
+  return results;
 }
 
-},1000);
+/* ═══════════════════════════════════════════════════
+   ALGORITHM 2: BUBBLE SORT
+   Purpose: Sort capsules chronologically by unlockDate.
+   Complexity: O(n²) — nested passes with comparisons
+               and swaps until no more swaps needed.
+═══════════════════════════════════════════════════ */
 
+/**
+ * Bubble Sort — compare adjacent elements and swap
+ * if they are in the wrong order. Repeat until sorted.
+ *
+ * @param {Array}  capsules  — array of capsule objects
+ * @param {'asc'|'desc'} order
+ * @returns {Array}          — new sorted array (original unchanged)
+ */
+function bubbleSort(capsules, order = 'asc') {
+  const arr = [...capsules];        // copy so we don't mutate original
+  const n   = arr.length;
+
+  // ── BUBBLE SORT: outer loop = n-1 passes ──
+  for (let i = 0; i < n - 1; i++) {              // O(n) passes
+    let swapped = false;
+
+    for (let j = 0; j < n - 1 - i; j++) {        // O(n) comparisons per pass
+      const dateA = new Date(arr[j].unlockDate).getTime();
+      const dateB = new Date(arr[j + 1].unlockDate).getTime();
+
+      // Determine if adjacent pair needs swapping
+      const shouldSwap = order === 'asc' ? dateA > dateB : dateA < dateB;
+
+      if (shouldSwap) {
+        // SWAP — classic Bubble Sort exchange
+        [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+        swapped = true;
+      }
+    }
+
+    // Optimisation: if no swaps happened, array is already sorted
+    if (!swapped) break;
+  }
+
+  return arr;
 }
 
-/* notification */
+/* ─────────────────────────────────────────────────────
+   CAPSULE MANAGER
+   Orchestrates Array, Stack, Queue + Algorithms
+───────────────────────────────────────────────────── */
 
-function notifyUser(capsule){
+class CapsuleManager {
+  constructor(username) {
+    this.username   = username;
+    this.storageKey = `${CAPSULES_KEY}_${username}`;
 
-if(Notification.permission==="granted"){
+    // Instantiate all three data structures
+    this.capsuleArray = new CapsuleArray();   // DATA STRUCTURE 1: Array
+    this.undoStack    = new UndoStack();      // DATA STRUCTURE 2: Stack
+    this.openingQueue = new OpeningQueue();   // DATA STRUCTURE 3: Queue
 
-new Notification("Time Capsule Opened!",{
+    this._load();    // Load persisted capsules
+  }
 
-body:capsule.message
+  /* ── Persistence ── */
 
-});
+  /** Load capsules from localStorage into the Array. */
+  _load() {
+    const raw = localStorage.getItem(this.storageKey);
+    const saved = raw ? JSON.parse(raw) : [];
 
+    // Re-populate the CapsuleArray
+    saved.forEach(c => this.capsuleArray.push(c));
+
+    // Re-populate Queue with any past-due locked capsules
+    this._refreshQueue();
+  }
+
+  /** Save the entire Array to localStorage. */
+  _save() {
+    localStorage.setItem(
+      this.storageKey,
+      JSON.stringify(this.capsuleArray.getAll())
+    );
+  }
+
+  /** Enqueue all capsules whose unlock time has passed. */
+  _refreshQueue() {
+    const now = Date.now();
+    const all = this.capsuleArray.getAll();
+
+    // Sort by unlock date first (Bubble Sort)
+    const sorted = bubbleSort(all, 'asc');  // ← ALGORITHM: Bubble Sort
+
+    // Enqueue in chronological order (Queue: FIFO)
+    sorted.forEach(cap => {
+      if (!cap.isOpen && new Date(cap.unlockDate).getTime() <= now) {
+        this.openingQueue.enqueue(cap.id);   // ← DATA STRUCTURE 3: Queue
+      }
+    });
+  }
+
+  /* ── Create ── */
+
+  /**
+   * Create and store a new time capsule.
+   * Pushes to Array and records on Stack for undo.
+   */
+  create({ title, message, unlockDate }) {
+    // Store the unlock date as a timestamp (ms) to avoid all timezone parsing issues
+    const unlockMs = new Date(unlockDate).getTime();
+    const capsule = {
+      id:         `cap_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      title:      title.trim(),
+      message:    message.trim(),
+      unlockDate: new Date(unlockMs).toISOString(),
+      unlockMs:   unlockMs,
+      createdAt:  new Date().toISOString(),
+      isOpen:     false
+    };
+
+    this.capsuleArray.push(capsule);   // ← DATA STRUCTURE 1: Array.push
+    this.undoStack.push(capsule.id);   // ← DATA STRUCTURE 2: Stack.push (for undo)
+    this._save();
+
+    return capsule;
+  }
+
+  /* ── Undo Last ── */
+
+  /**
+   * Remove the most recently created capsule using the Stack.
+   * @returns {Object|null} — the removed capsule, or null
+   */
+  undoLast() {
+    const lastId = this.undoStack.pop();   // ← DATA STRUCTURE 2: Stack.pop (LIFO)
+    if (!lastId) return null;
+
+    const allCapsules = this.capsuleArray.getAll();
+    const idx = allCapsules.findIndex(c => c.id === lastId);
+    if (idx === -1) return null;
+
+    const removed = this.capsuleArray.removeAt(idx);   // ← DATA STRUCTURE 1: Array removal
+    this._save();
+    return removed;
+  }
+
+  /* ── Delete ── */
+
+  /** Delete a specific capsule by id. */
+  delete(id) {
+    const all = this.capsuleArray.getAll();
+    const idx = all.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      this.capsuleArray.removeAt(idx);   // ← DATA STRUCTURE 1: Array removal
+      this._save();
+      return true;
+    }
+    return false;
+  }
+
+  /* ── Process Queue ── */
+
+  /**
+   * Check and process any capsules in the opening Queue.
+   * Returns array of capsule ids that were just unlocked.
+   */
+  processQueue() {
+    this._refreshQueue();
+    const unlocked = [];
+
+    // Dequeue until empty (FIFO)
+    while (!this.openingQueue.isEmpty()) {         // ← DATA STRUCTURE 3: Queue processing
+      const id = this.openingQueue.dequeue();      // ← Queue.dequeue (FIFO)
+      const cap = this.capsuleArray.findById(id);
+
+      if (cap && !cap.isOpen) {
+        this.capsuleArray.update(id, { isOpen: true });
+        unlocked.push(id);
+      }
+    }
+
+    if (unlocked.length) this._save();
+    return unlocked;
+  }
+
+  /* ── Search (Linear Search) ── */
+
+  /**
+   * Search capsules by keyword using Linear Search.
+   * @param {string} query
+   * @returns {Array}
+   */
+  search(query) {
+    const all = this.capsuleArray.getAll();
+    return linearSearch(all, query);   // ← ALGORITHM: Linear Search
+  }
+
+  /* ── Sort (Bubble Sort) ── */
+
+  /**
+   * Get all capsules sorted chronologically using Bubble Sort.
+   * @param {'asc'|'desc'} order
+   * @returns {Array}
+   */
+  getSorted(order = 'asc') {
+    const all = this.capsuleArray.getAll();
+    return bubbleSort(all, order);     // ← ALGORITHM: Bubble Sort
+  }
+
+  /* ── Getters ── */
+
+  /** Return all capsules (unsorted). */
+  getAll()   { return this.capsuleArray.getAll(); }
+
+  /** Return total count. */
+  get count()  { return this.capsuleArray.size; }
+
+  /** Return locked capsule count. */
+  get lockedCount()   { return this.getAll().filter(c => !c.isOpen).length; }
+
+  /** Return unlocked capsule count. */
+  get unlockedCount() { return this.getAll().filter(c => c.isOpen).length; }
+
+  /** Return undo stack contents (for visualization). */
+  getStackState()  { return this.undoStack.getAll(); }
+
+  /** Return queue contents (for visualization). */
+  getQueueState()  { return this.openingQueue.getAll(); }
+
+  /** Can we undo? */
+  canUndo() { return !this.undoStack.isEmpty(); }
 }
 
-alert("Your Capsule Opened!\n"+capsule.message);
+/* ─────────────────────────────────────────────────────
+   COUNTDOWN TIMER FORMATTER
+───────────────────────────────────────────────────── */
 
+/**
+ * Format milliseconds remaining into a human-readable countdown.
+ * @param {number} ms  — milliseconds remaining
+ * @returns {string}   — e.g. "2d 04:30:15"
+ */
+function formatCountdown(ms) {
+  if (ms <= 0) return 'UNLOCKING...';
+
+  const totalSeconds = Math.floor(ms / 1000);
+  const days    = Math.floor(totalSeconds / 86400);
+  const hours   = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600)  / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = n => String(n).padStart(2, '0');
+
+  if (days > 0) {
+    return `${days}d ${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  }
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-/* stack undo */
-
-function undoCapsule(){
-
-if(stack.length==0){
-alert("Nothing to undo");
-return;
+/**
+ * Check if a capsule's unlock time has arrived.
+ * @param {string} unlockDate  — ISO date string
+ * @returns {boolean}
+ */
+function isUnlockable(unlockDate) {
+  return new Date(unlockDate).getTime() <= Date.now();
 }
 
-let last=stack.pop();
-
-capsules=capsules.filter(c=>c.id!==last.id);
-
-document.getElementById("output").innerHTML="Last Capsule Removed";
-
+/**
+ * Get milliseconds remaining until unlock.
+ * @param {string} unlockDate
+ * @returns {number}
+ */
+function msUntilUnlock(unlockDate) {
+  return Math.max(0, new Date(unlockDate).getTime() - Date.now());
 }
 
-/* display capsules */
+/* ─────────────────────────────────────────────────────
+   BROWSER NOTIFICATION HELPER
+───────────────────────────────────────────────────── */
 
-function showCapsules(){
+/**
+ * Request notification permission and send a notification
+ * when a capsule unlocks.
+ * @param {string} capsuleTitle
+ */
+async function sendUnlockNotification(capsuleTitle) {
+  if (!('Notification' in window)) return;
 
-let text="";
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
 
-capsules.forEach(c=>{
-text+="<p>"+c.message+" | "+c.date+"</p>";
-});
-
-document.getElementById("output").innerHTML=text;
-
+  if (Notification.permission === 'granted') {
+    new Notification('🚀 Time Capsule Unlocked!', {
+      body:    `"${capsuleTitle}" is now open. Read your message to the future!`,
+      icon:    'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🌌</text></svg>',
+      badge:   'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⏰</text></svg>',
+      vibrate: [200, 100, 200],
+      tag:     `capsule-${capsuleTitle}`
+    });
+  }
 }
 
-/* sorting → bubble sort */
+/* ─────────────────────────────────────────────────────
+   TOAST NOTIFICATION (in-app)
+───────────────────────────────────────────────────── */
 
-function sortCapsules(){
+/**
+ * Show an in-app toast notification.
+ * @param {string} title
+ * @param {string} body
+ * @param {string} icon
+ * @param {number} duration  ms before auto-dismiss
+ */
+function showToast(title, body, icon = '🌌', duration = 5000) {
+  let container = document.getElementById('toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toast-container';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
 
-for(let i=0;i<capsules.length;i++){
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.innerHTML = `
+    <span class="toast-icon">${icon}</span>
+    <div>
+      <div class="toast-title">${title}</div>
+      <div class="toast-body">${body}</div>
+    </div>
+  `;
 
-for(let j=0;j<capsules.length-i-1;j++){
+  container.appendChild(toast);
 
-if(new Date(capsules[j].date) > new Date(capsules[j+1].date)){
-
-let temp=capsules[j];
-capsules[j]=capsules[j+1];
-capsules[j+1]=temp;
-
+  setTimeout(() => {
+    toast.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+    toast.style.opacity    = '0';
+    toast.style.transform  = 'translateX(60px)';
+    setTimeout(() => toast.remove(), 400);
+  }, duration);
 }
 
-}
-
-}
-
-showCapsules();
-
-}
-
-/* searching → linear search */
-
-function searchCapsule(){
-
-let searchDate=document.getElementById("searchDate").value;
-
-let found=null;
-
-for(let i=0;i<capsules.length;i++){
-
-if(capsules[i].date===searchDate){
-
-found=capsules[i];
-break;
-
-}
-
-}
-
-if(found){
-
-document.getElementById("output").innerHTML=
-"Found: "+found.message+" | "+found.date;
-
-}else{
-
-document.getElementById("output").innerHTML="Capsule Not Found";
-
-}
-
-}
+/* ─────────────────────────────────────────────────────
+   EXPOSE GLOBALS
+───────────────────────────────────────────────────── */
+// All classes/functions are referenced by dashboard.html via script tag
